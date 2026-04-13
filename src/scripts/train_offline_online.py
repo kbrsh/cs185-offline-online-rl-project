@@ -14,7 +14,7 @@ from infrastructure.log_utils import setup_wandb, Logger, dump_log
 from infrastructure.replay_buffer import ReplayBuffer
 
 
-def run_offline_training_loop(config: dict, train_logger, eval_logger, args: argparse.Namespace, start_step: int = 0):
+def run_offline_training_loop(config: dict, train_logger, eval_logger, args: argparse.Namespace, start_step: int = 0) -> str:
     """
     Run offline training loop
     """
@@ -155,7 +155,7 @@ def run_online_training_loop(config: dict, train_logger, eval_logger, args: argp
         else:
             observation = next_observation
 
-    return dump_log(agent, train_logger, eval_logger, config, args.save_dir)
+    dump_log(agent, train_logger, eval_logger, config, args.save_dir)
 
 
 def setup_arguments(args=None):
