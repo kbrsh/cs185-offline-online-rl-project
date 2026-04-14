@@ -66,11 +66,8 @@ class SACBCAgent(nn.Module):
         # TODO(student): Compute the Q loss
         q = self.critic(observations, actions)
         with torch.no_grad():
-            next_dists = self.actor(next_observations)
-            next_actions = next_dists.rsample()
-            next_log_probs = next_dists.log_prob(next_actions)
-            next_q = self.target_critic(next_observations, next_actions).min(dim=0)[0]
-            target_q = rewards + (1 - dones) * self.discount * (next_q - self.beta() * next_log_probs)
+            target_q = self.target_critic(next_observations, self.actor(next_observations).rsample()).mean(dim=0)
+            target_q = rewards + (1 - dones) * self.discount * target_q
         loss = ((q - target_q) ** 2).mean()
 
         self.critic_optimizer.zero_grad()
