@@ -112,19 +112,20 @@ def run_online_training_loop(config: dict, train_logger, eval_logger, args: argp
             done=np.array(done, dtype=np.float32),
         )
 
-        batch = replay_buffer.sample(config["batch_size"])
-        batch = {
-            k: ptu.from_numpy(v) if isinstance(v, np.ndarray) else v for k, v in batch.items()
-        }
-
-        metrics = agent.update(
-            batch["observations"],
-            batch["actions"],
-            batch["rewards"],
-            batch["next_observations"],
-            batch["dones"],
-            step,
-        )
+        metrics = {}
+        if len(replay_buffer) >= config["batch_size"]:
+            batch = replay_buffer.sample(config["batch_size"])
+            batch = {
+                k: ptu.from_numpy(v) if isinstance(v, np.ndarray) else v for k, v in batch.items()
+            }
+            metrics = agent.update(
+                batch["observations"],
+                batch["actions"],
+                batch["rewards"],
+                batch["next_observations"],
+                batch["dones"],
+                step,
+            )
 
         if "episode" in info:
             metrics.update({

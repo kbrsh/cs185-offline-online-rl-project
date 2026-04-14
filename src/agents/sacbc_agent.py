@@ -66,8 +66,12 @@ class SACBCAgent(nn.Module):
         # TODO(student): Compute the Q loss
         q = self.critic(observations, actions)
         with torch.no_grad():
-            target_q = self.target_critic(next_observations, self.actor(next_observations).rsample()).mean(dim=0)
-        loss = ((q - (rewards + (1 - dones)*self.discount*target_q))**2).mean()
+            next_dists = self.actor(next_observations)
+            next_actions = next_dists.rsample()
+            next_log_probs = next_dists.log_prob(next_actions)
+            next_q = self.target_critic(next_observations, next_actions).min(dim=0)[0]
+            target_q = rewards + (1 - dones) * self.discount * (next_q - self.beta() * next_log_probs)
+        loss = ((q - target_q) ** 2).mean()
 
         self.critic_optimizer.zero_grad()
         loss.backward()
@@ -90,12 +94,17 @@ class SACBCAgent(nn.Module):
         Update the actor
         """
         # TODO(student): Compute the actor loss
-        q_loss = ...
+        actor_dists = self.actor(observations)
+        actor_actions = actor_dists.rsample()
+        log_probs = actor_dists.log_prob(actor_actions)
 
-        mses = ...
-        bc_loss = ...
+        q_values = self.critic(observations, actor_actions)  # (n_ensembles, batch)
+        q_loss = -q_values.mean(dim=0).mean()
 
-        entropy_loss = ...
+        mses = ((actions - actor_actions) ** 2).sum(dim=-1)  # sum over action dims
+        bc_loss = self.alpha * mses.mean()
+
+        entropy_loss = self.beta().detach() * log_probs.mean()
 
         loss = q_loss + bc_loss + entropy_loss
 
@@ -158,4 +167,5 @@ class SACBCAgent(nn.Module):
 
     def update_target_critic(self) -> None:
         # TODO(student): Update target_critic using Polyak averaging with self.target_update_rate
-        ...
+        for param, target_param in zip(self.critic.parameters(), self.target_critic.parameters()):
+            target_param.data.lerp_(param.data, self.target_update_rate)
